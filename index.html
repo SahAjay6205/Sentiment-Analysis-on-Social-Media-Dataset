@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentiment Analysis</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 100px;
+        }
+        button {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #3367d6;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .positive {
+            background: #e6f4ea;
+            border-left: 5px solid #34a853;
+        }
+        .negative {
+            background: #fce8e6;
+            border-left: 5px solid #ea4335;
+        }
+        .confidence {
+            font-weight: bold;
+        }
+        .emoji {
+            font-size: 1.2em;
+        }
+        .error {
+            color: #d93025;
+            background: #fce8e6;
+            padding: 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Sentiment Analysis</h1>
+        <p>Enter text to analyze its sentiment:</p>
+        
+        <form id="sentiment-form">
+            <textarea id="inputText" placeholder="Type your text here..." required></textarea>
+            <button type="submit">Analyze</button>
+        </form>
+        
+        <div id="result" class="result" style="display: none;">
+            <h3>Analysis Result</h3>
+            <p><strong>Original Text:</strong> <span id="originalText"></span></p>
+            <p><strong>Cleaned Text:</strong> <span id="cleanedText"></span></p>
+            <p><strong>Sentiment:</strong> 
+                <span id="sentiment" class="emoji"></span>
+                (<span id="confidence" class="confidence"></span> confidence)
+            </p>
+            <p><strong>Processed At:</strong> <span id="timestamp"></span></p>
+        </div>
+        
+        <div id="error" class="error" style="display: none;"></div>
+    </div>
+
+    <script>
+        document.getElementById('sentiment-form').addEventListener('submit', function(e) {
+            e.preventDefault(); // Prevent default form submission
+            
+            const text = document.getElementById('inputText').value.trim();
+            if (!text) {
+                showError("Please enter some text!");
+                return;
+            }
+            
+            // Hide previous results/errors
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            
+            fetch('/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({text: text})
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw err; });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                const resultDiv = document.getElementById('result');
+                resultDiv.style.display = 'block';
+                resultDiv.className = `result ${data.sentiment}`;
+                
+                document.getElementById('originalText').textContent = data.text;
+                document.getElementById('cleanedText').textContent = data.cleaned;
+                document.getElementById('sentiment').textContent = 
+                    data.sentiment === 'positive' ? '😊 Positive' : '😠 Negative';
+                document.getElementById('confidence').textContent = 
+                    `${(data.confidence * 100).toFixed(1)}%`;
+                document.getElementById('timestamp').textContent = data.timestamp;
+            })
+            .catch(error => {
+                showError(error.message || "An error occurred during analysis.");
+                console.error('Error:', error);
+            });
+        });
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>
